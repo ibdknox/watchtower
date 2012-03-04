@@ -5,7 +5,7 @@ A simple file/directory watcher library
 ## Usage
 
 ```clojure
-(watch ["src/" "resources/"]
+(watcher ["src/" "resources/"]
   (rate 50) ;; poll every 50ms
   (file-filter ignore-dotfiles) ;; add a filter for the files we care about
   (file-filter (extensions :clj :cljs)) ;; filter by extensions
