@@ -103,5 +103,6 @@
   (let [exts-set (set (map name exts))]
     (fn [f]
       (let [fname (.getName f)
-            cur (subs fname (inc (.lastIndexOf fname ".")))]
+            idx (.lastIndexOf fname ".")
+            cur (if-not (neg? idx) (subs fname (inc idx)))]
         (exts-set cur)))))
