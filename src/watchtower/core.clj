@@ -33,6 +33,11 @@
   [w func]
   (update-in w [:on-change] conj func))
 
+(defn change-first?
+  "Set whether on-change function will be executed at startup or not"
+  [w bool]
+  (assoc w :change-first? bool))
+
 ;;*****************************************************
 ;; Watcher execution  
 ;;*****************************************************
@@ -62,16 +67,19 @@
     (doseq [f funcs]
       (f files))))
 
-(defn compile-watcher [{:keys [filters rate dirs on-change]}]
+(defn compile-watcher [{:keys [filters rate dirs on-change change-first?]
+                        :or {change-first? true}}]
   {:rate rate
+   :change-first? change-first?
    :updated? (updated?-fn dirs filters)
    :changed (changed-fn on-change)})
 
 (defn watch 
   "Execute a watcher map"
   [w]
-  (let [{:keys [updated? rate changed]} (compile-watcher w)]
-    (binding [*last-pass* (atom 0)]
+  (let [{:keys [updated? rate changed change-first?]} (compile-watcher w)
+        pass (if change-first? 0 (System/currentTimeMillis))]
+    (binding [*last-pass* (atom pass)]
       (while true
         (Thread/sleep rate)
         (when-let [changes (updated?)] 
