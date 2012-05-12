@@ -1,6 +1,9 @@
 (ns watchtower.test.core
   (:use [watchtower.core])
-  (:use [clojure.test]))
+  (:use [midje.sweet]))
 
-(deftest replace-me ;; FIXME: write
-  (is false "No tests have been written."))
+(fact "An example of how to create a file-watcher"
+   (watcher* "tmp") => (:dirs ["tmp"] :filters []} )
+
+(fact "An example of how get-files is used:"
+  (get-files ["tmp"] default-filter) => seq?)
