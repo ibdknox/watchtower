@@ -5,6 +5,9 @@
 (def ^{:dynamic true} *last-pass* nil)
 (def ^{:dynamic true} *last-file-set* nil)
 
+(def  ^{:dynamic true} *running* (ref false))
+(def  ^{:dynamic true} *paused* (ref false))
+
 ;;*****************************************************
 ;; Watcher map creation 
 ;;*****************************************************
@@ -116,21 +119,24 @@
   "Execute a watcher map"
   [w]
   (let [{:keys [updated? notify-on-start? rate modified deleted added]} (compile-watcher w)]
+    (dosync (ref-set *running* true))
     (binding [*last-pass* (atom (if notify-on-start? 
                                   0 
                                   (System/currentTimeMillis)))
               *last-file-set* (atom (if notify-on-start? 
                                       #{}
                                       (apply hash-set (get-initial-files w))))]
-      (while true
+      (while @*running*
         (Thread/sleep rate)
-        (let [changes (updated?)]
-          (when-let [additions (changes :additions)] 
-            (added additions))
-          (when-let [modifications (changes :modifications)] 
-            (modified modifications))
-          (when-let [deletions (changes :deletions)] 
-            (deleted deletions)))))))
+        (if-not @*paused*
+          (let [changes (updated?)]
+            (when-let [additions (changes :additions)] 
+              (added additions))
+            (when-let [modifications (changes :modifications)] 
+              (modified modifications))
+            (when-let [deletions (changes :deletions)] 
+              (deleted deletions))))))))
+
 
 (defmacro watcher 
   "Create a watcher for the given dirs (either a string or coll of strings), applying
@@ -142,6 +148,16 @@
                 (watcher*)
                 ~@body)]
      (future (watch w#))))
+
+(defn pause-watch []
+  (dosync (ref-set *paused* true)))
+
+(defn resume-watch []
+  (dosync (ref-set *paused* false)))
+
+(defn stop-watch []
+  (dosync (ref-set *paused* false)
+          (ref-set *running* false)))
 
 ;;*****************************************************
 ;; file filters
