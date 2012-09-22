@@ -109,8 +109,10 @@
   "Create a file-filter for the given extensions."
   [& exts]
   (let [exts-set (set (map name exts))]
-    (fn [f]
-      (let [fname (.getName f)
-            idx (.lastIndexOf fname ".")
-            cur (if-not (neg? idx) (subs fname (inc idx)))]
-        (exts-set cur)))))
+    (if (contains? exts-set "*")
+      (constantly true)
+      (fn [f]
+        (let [fname (.getName f)
+              idx (.lastIndexOf fname ".")
+              cur (if-not (neg? idx) (subs fname (inc idx)))]
+          (exts-set cur))))))
