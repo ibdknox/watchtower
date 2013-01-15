@@ -4,30 +4,30 @@
 (def ^{:dynamic true} *last-pass* nil)
 
 ;;*****************************************************
-;; Watcher map creation 
+;; Watcher map creation
 ;;*****************************************************
 
-(defn watcher* 
+(defn watcher*
   "Create a watcher map that can later be passed to (watch)"
   [dirs]
   (let [dirs (if (string? dirs)
                [dirs]
-               dirs)]  
+               dirs)]
     {:dirs dirs
      :filters []}))
 
-(defn file-filter 
+(defn file-filter
   "Add a filter to a watcher. A filter is just a function that takes in a
   java.io.File and returns truthy about whether or not it should be included."
   [w filt]
   (update-in w [:filters] conj filt))
 
-(defn rate 
+(defn rate
   "Set the rate of polling."
   [w r]
   (assoc w :rate r))
 
-(defn on-change 
+(defn on-change
   "When files are changed, execute a function that takes in a seq of the changed
   file objects."
   [w func]
@@ -39,10 +39,10 @@
   (assoc w :change-first? bool))
 
 ;;*****************************************************
-;; Watcher execution  
+;; Watcher execution
 ;;*****************************************************
 
-(defn default-filter [f] 
+(defn default-filter [f]
   (.isFile f))
 
 (defn modified? [f]
@@ -58,7 +58,7 @@
     (fn []
       (let [files (get-files dirs final-filter)
             results (seq (doall (filter modified? files)))]
-        (when results 
+        (when results
           (reset! *last-pass* (System/currentTimeMillis)))
         results))))
 
@@ -82,10 +82,10 @@
     (binding [*last-pass* (atom pass)]
       (while true
         (Thread/sleep rate)
-        (when-let [changes (updated?)] 
+        (when-let [changes (updated?)]
           (changed changes))))))
 
-(defmacro watcher 
+(defmacro watcher
   "Create a watcher for the given dirs (either a string or coll of strings), applying
   the given transformations.
 
@@ -100,12 +100,12 @@
 ;; file filters
 ;;*****************************************************
 
-(defn ignore-dotfiles 
+(defn ignore-dotfiles
   "A file-filter that removes any file that starts with a dot."
   [f]
   (not= \. (first (.getName f))))
 
-(defn extensions 
+(defn extensions
   "Create a file-filter for the given extensions."
   [& exts]
   (let [exts-set (set (map name exts))]
