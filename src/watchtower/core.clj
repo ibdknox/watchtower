@@ -4,40 +4,45 @@
 (def ^{:dynamic true} *last-pass* nil)
 
 ;;*****************************************************
-;; Watcher map creation 
+;; Watcher map creation
 ;;*****************************************************
 
-(defn watcher* 
+(defn watcher*
   "Create a watcher map that can later be passed to (watch)"
   [dirs]
   (let [dirs (if (string? dirs)
                [dirs]
-               dirs)]  
+               dirs)]
     {:dirs dirs
      :filters []}))
 
-(defn file-filter 
+(defn file-filter
   "Add a filter to a watcher. A filter is just a function that takes in a
   java.io.File and returns truthy about whether or not it should be included."
   [w filt]
   (update-in w [:filters] conj filt))
 
-(defn rate 
+(defn rate
   "Set the rate of polling."
   [w r]
   (assoc w :rate r))
 
-(defn on-change 
+(defn on-change
   "When files are changed, execute a function that takes in a seq of the changed
   file objects."
   [w func]
   (update-in w [:on-change] conj func))
 
+(defn change-first?
+  "Set whether on-change function will be executed at startup or not"
+  [w bool]
+  (assoc w :change-first? bool))
+
 ;;*****************************************************
-;; Watcher execution  
+;; Watcher execution
 ;;*****************************************************
 
-(defn default-filter [f] 
+(defn default-filter [f]
   (.isFile f))
 
 (defn modified? [f]
@@ -53,7 +58,7 @@
     (fn []
       (let [files (get-files dirs final-filter)
             results (seq (doall (filter modified? files)))]
-        (when results 
+        (when results
           (reset! *last-pass* (System/currentTimeMillis)))
         results))))
 
@@ -62,22 +67,25 @@
     (doseq [f funcs]
       (f files))))
 
-(defn compile-watcher [{:keys [filters rate dirs on-change]}]
+(defn compile-watcher [{:keys [filters rate dirs on-change change-first?]
+                        :or {change-first? true}}]
   {:rate rate
+   :change-first? change-first?
    :updated? (updated?-fn dirs filters)
    :changed (changed-fn on-change)})
 
 (defn watch 
   "Execute a watcher map"
   [w]
-  (let [{:keys [updated? rate changed]} (compile-watcher w)]
-    (binding [*last-pass* (atom 0)]
+  (let [{:keys [updated? rate changed change-first?]} (compile-watcher w)
+        pass (if change-first? 0 (System/currentTimeMillis))]
+    (binding [*last-pass* (atom pass)]
       (while true
         (Thread/sleep rate)
-        (when-let [changes (updated?)] 
+        (when-let [changes (updated?)]
           (changed changes))))))
 
-(defmacro watcher 
+(defmacro watcher
   "Create a watcher for the given dirs (either a string or coll of strings), applying
   the given transformations.
 
@@ -92,17 +100,17 @@
 ;; file filters
 ;;*****************************************************
 
-(defn ignore-dotfiles 
+(defn ignore-dotfiles
   "A file-filter that removes any file that starts with a dot."
   [f]
   (not= \. (first (.getName f))))
 
-(defn extensions 
+(defn extensions
   "Create a file-filter for the given extensions."
   [& exts]
-  (let [exts-set (set (map name exts))]
-    (fn [f]
-      (let [fname (.getName f)
-            idx (.lastIndexOf fname ".")
-            cur (if-not (neg? idx) (subs fname (inc idx)))]
-        (exts-set cur)))))
+  (let [exts-set (set (map #(str "." (name %)) exts))]
+    (if (exts-set ".*")
+      (constantly true)
+      (fn [file]
+        (let [fname (.getName file)]
+          (some #(.endsWith fname %) exts-set))))))
