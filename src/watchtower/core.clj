@@ -73,9 +73,9 @@
   (let [{:keys [updated? rate changed]} (compile-watcher w)]
     (binding [*last-pass* (atom 0)]
       (while true
-        (Thread/sleep rate)
-        (when-let [changes (updated?)] 
-          (changed changes))))))
+        (when-let [changes (updated?)]
+          (changed changes))
+        (Thread/sleep rate)))))
 
 (defmacro watcher 
   "Create a watcher for the given dirs (either a string or coll of strings), applying
